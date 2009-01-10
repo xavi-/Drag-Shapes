@@ -1,0 +1,184 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <title>drag-drop-irregular-shapes</title>
+    <script src="jquery-1.2.6.js" type="text/javascript" charset="utf-8"></script>
+<style type="text/css" media="screen">
+    #board, 
+    #board-screen
+    {
+        width: 300px;
+        height: 300px;
+    }
+    
+    #board
+    {
+        border: 5px solid black;
+        position: relative;
+    }
+    
+    #board-screen
+    {
+        border: 0px;
+        z-index: 999999;
+    }
+    
+    .indicator
+    {
+        position: absolute;
+        overflow: hidden;
+        background-color: #F00;
+        width: 3px;
+        height: 3px;
+        z-index: -1;
+    }
+    
+    #board-surface
+    {
+        width: 100%;
+        height: 100%;
+    }
+    
+    #marker
+    {
+        position: absolute;
+        background-color: #00F;
+        z-index: -1;
+    }
+</style>
+</head>
+<body id="drag-drop-irregular-shapes">
+    <div id="board">
+        <img id="board-screen" alt="board" src="pics/transparent.gif" usemap="#board-def" />
+        <map id="board-def" name="board-def">
+            <area shape="poly" alt="triangle" coords="40,210,80,190,70,230"/>
+            <area shape="poly" alt="triangle" coords="100,40,90,100,180,100,170,10"/>
+            <area shape="poly" alt="triangle" coords="100,40,90,100,180,100,170,10,150,50"/>
+        </map>
+        <div id="marker"></div>
+    </div>
+<script type="text/javascript" charset="utf-8">
+var board = {};
+
+(function() {
+    var makeShape = function(coords, display) {
+        var points = [];
+        var boundBox = (function() {
+            var minX = Number.POSITIVE_INFINITY, maxX = Number.NEGATIVE_INFINITY;
+            var minY = Number.POSITIVE_INFINITY, maxY = Number.NEGATIVE_INFINITY;
+            
+            var tempPts = coords.split(",");
+            if(tempPts.length % 2) throw Error("Odd number of points in coords: " + coords)
+            
+            for(var i = 0; i < tempPts.length; i += 2) {
+                var x = Number(tempPts[i]), y = Number(tempPts[i + 1]);
+                
+                points.push({ "x": x, "y": y });
+                
+                if (minX > x) minX = x;
+                if (minY > y) minY = y;
+                if (maxX < x) maxX = x;
+                if (maxY < y) maxY = y;
+            }
+            
+            return { x: minX, y: minY, 
+                     width: maxX - minX, height: maxY - minY };
+        })();
+        
+        var shape = {};
+        shape.getCoords = function() { return coords; };
+        
+        // Returns object of the form {x: int, y: int, width: int, height: int};
+        shape.getBoundingBox = function() { return boundBox; };
+        
+        // Pos is the x, y coordinates of the upper left hand corner of the bounding box
+        shape.move = function(pos) { 
+            var diff = { x: pos.x - boundBox.x, y: pos.y - boundBox.y };
+            
+            var newCoords = [];
+            for(var i = 0; i < points.length; i++) {
+                points[i].x += diff.x; 
+                points[i].y += diff.y;
+                
+                newCoords.push(points[i].x);
+                newCoords.push(points[i].y);
+            }
+            coords = newCoords.join(",")
+            
+            boundBox.x = pos.x;
+            boundBox.y = pos.y;
+            
+            display(boundBox);
+        };
+                
+        return shape;
+    };
+    
+    board.create = function(boardId) {
+        var mouseIsDown = false; 
+        var offset;
+        var shapeMoving;
+        
+        var displayShape = function(boundBox) {
+            $("#marker")
+                .css({ left: boundBox.x,
+                       top: boundBox.y,
+                       width: boundBox.width,
+                       height: boundBox.height });
+        };
+                
+        $(document)
+            .mouseup(function() { 
+                mouseIsDown = false; 
+                offset = {};
+                shapeMoving = {};
+                
+                return false;
+            })
+            .mousemove(function(e) {
+                if(!mouseIsDown) return false;
+                
+                var shape = jQuery.data(shapeMoving, "shape");
+                shape.move({ x: e.pageX + offset.x, y: e.pageY + offset.y });
+                
+                $(shapeMoving).attr("coords", shape.getCoords());
+                
+                return false;
+            });
+        
+        $("#" + boardId + " area")
+            .each(function(i) {
+                jQuery.data(this, "shape",
+                    makeShape($(this).attr("coords"), displayShape));
+            })
+            .mousedown(function(e){ 
+                var boundBox = jQuery.data(this, "shape").getBoundingBox();
+                
+                offset = { x: boundBox.x - e.pageX, y: boundBox.y - e.pageY };
+                mouseIsDown = true; 
+                shapeMoving = this;
+                
+                return false; 
+            })
+            .mousemove(function(e) {
+                if (mouseIsDown) return true; // Allow event to bubble up
+                
+                var offset = $(this).offset();
+                
+                $("<div>")
+                    .addClass("indicator") 
+                    .css({ left: (e.pageX - offset.left - 2) + "px", 
+                           top: (e.pageY - offset.top - 2) + "px" })
+                    .appendTo("#board");
+                
+                return false
+            });
+    };
+    
+    board.create("board-def");
+})();
+</script>
+</body>
+</html>
