@@ -48,9 +48,8 @@
     <div id="board">
         <img id="board-screen" alt="board" src="./transparent.gif" usemap="#board-def" />
         <map id="board-def" name="board-def">
-            <area shape="poly" coords="50,0,100,50,50,100,0,50" adj-pieces="{'2': [100, 100], '3': [0, 100]}" img-piece="diamond.png"/>
-            <area shape="poly" coords="50,100,100,150,50,200,0,150" adj-pieces="{'1': [-100, -100], '3': [-100, 0]}" img-piece="diamond.png"/>
-            <area shape="poly" coords="50,200,100,250,50,300,0,250" adj-pieces="{'1': [0, -100], '2': [100, 0]}" img-piece="diamond.png"/>
+            <area shape="poly" coords="50,0,100,50,50,100,0,50" shape-id="1" adj-pieces="{'2': [0, 100]}" img-piece="diamond.png"/>
+            <area shape="poly" coords="50,200,100,250,50,300,0,250" shape-id="2" adj-pieces="{'1': [0, -100]}" img-piece="diamond.png"/>
         </map>
     </div>
 <script type="text/javascript" charset="utf-8">
@@ -163,11 +162,6 @@ var puzzle = {};
         $("#" + boardId + " area")
             .each(function(i) {
                 var id = $(this).attr("shape-id");
-                if (!id) {
-                    id = i;
-                    $(this).attr("shape-id", id);
-                }
-                
                 shapes[id] = makeShape(this);
             })
             .mousedown(function(e) { 
@@ -186,36 +180,43 @@ var puzzle = {};
     puzzle.create = function(shapes) {
         var threshold = 10;
         
-        for (var shapeId in shapes) {
-            var adj = eval("(" + $(shapes[shapeId].getElement()).attr("adj-pieces") + ")");
+        var addDisplayer = function(shape) {
+            var img = new Image();
+            img.src = $(shape.getElement()).attr("img-piece");
+            $("#board").prepend(img);
+            $(img)
+                .addClass("piece")
+                .css({ left: shape.getBoundingBox().x, top: shape.getBoundingBox().y });
             
-            for (var adjId in adj) {
-                shapes[shapeId].onMouseUp(function(e) {
-                    var thisBox = this.getBoundingBox();
-                    var thatBox = shapes[adjId].getBoundingBox();
+            shape.onMove(function(e) {
+                var box = this.getBoundingBox();
+                $(img).css({ left: box.x, top: box.y });
+            });
+        };
+        
+        var addAdjacencyCheck = function(shape, adjList) {
+            shape.onMouseUp(function(e) {
+                var thisBox = this.getBoundingBox();
+                 
+                for (var id in adjList) {
+                    var thatBox = shapes[id].getBoundingBox();
                     
-                    var vec = { x: thisBox.x - thatBox.x, y: thisBox.y - thatBox.y };
-                    var diff = { x: Math.abs(vec.x - adj[adjId][0]), y: Math.abs(vec.y - adj[adjId][1]) };
+                    var vec = { x: thatBox.x - thisBox.x, y: thatBox.y - thisBox.y };
+                    var diff = { x: Math.abs(vec.x - adj[id][0]), y: Math.abs(vec.y - adj[id][1]) };
                     
                     if (diff.x < threshold && diff.y < threshold) {
                         alert("Right pos!!");
                     }
-                });
-            }
+                }
+            });
+        };
+        
+        for (var shapeId in shapes) {
+            var adj = eval("(" + $(shapes[shapeId].getElement()).attr("adj-pieces") + ")");
             
-            (function() {
-                var img = new Image();
-                img.src = $(shapes[shapeId].getElement()).attr("img-piece");
-                $("#board").prepend(img);
-                $(img)
-                    .addClass("piece")
-                    .css({ left: shapes[shapeId].getBoundingBox().x, top: shapes[shapeId].getBoundingBox().y });;
-                
-                shapes[shapeId].onMove(function(e) {
-                    var box = this.getBoundingBox();
-                    $(img).css({ left: box.x, top: box.y });
-                });
-            })();
+            addAdjacencyCheck(shapes[shapeId], adj);
+            
+            addDisplayer(shapes[shapeId]);
         }
     };
     
