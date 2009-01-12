@@ -199,15 +199,46 @@ var puzzle = {};
                 var thisBox = this.getBoundingBox();
                  
                 for (var id in adjList) {
+                    if (!adjList[id]) continue;
+                    
                     var thatBox = shapes[id].getBoundingBox();
                     
+                    var truVec = { x: adjList[id][0], y: adjList[id][1] };
                     var vec = { x: thatBox.x - thisBox.x, y: thatBox.y - thisBox.y };
-                    var diff = { x: Math.abs(vec.x - adj[id][0]), y: Math.abs(vec.y - adj[id][1]) };
+                    var diff = { x: Math.abs(vec.x - truVec.x), y: Math.abs(vec.y - truVec.y) };
                     
                     if (diff.x < threshold && diff.y < threshold) {
-                        alert("Right pos!!");
+                        var setPos = { x: thatBox.x - truVec.x, y: thatBox.y - truVec.y };
+                        
+                        adjList[id] = null;
+                        
+                        this.move(setPos);
+                        connectShapes(this, shapes[id], truVec);
                     }
                 }
+            });
+        };
+        
+        var connectShapes = function(shape1, shape2, vec) {
+            shape1.onMove(function(e) {
+                var box1 = this.getBoundingBox();
+                var box2 = shape2.getBoundingBox();
+                var pos = { x: box1.x + vec.x, y: box1.y + vec.y };
+                
+                if(box2.x === pos.x && box2.y === pos.y) return;
+                
+                shape2.move(pos);
+            });
+            
+            var negVec = { x: -vec.x, y: -vec.y };
+            shape2.onMove(function(e) {
+                var box2 = this.getBoundingBox();
+                var box1 = shape1.getBoundingBox();
+                var pos = { x: box2.x + negVec.x, y: box2.y + negVec.y };
+                
+                if(box1.x === pos.x && box1.y === pos.y) return;
+                
+                shape1.move(pos);
             });
         };
         
