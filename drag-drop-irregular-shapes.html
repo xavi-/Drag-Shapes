@@ -4,7 +4,7 @@
 <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
     <title>drag-drop-irregular-shapes</title>
-    <script src="jquery-1.2.6.js" type="text/javascript" charset="utf-8"></script>
+    <script src="../jquery-1.2.6.js" type="text/javascript" charset="utf-8"></script>
 <style type="text/css" media="screen">
     #board, 
     #board-screen
@@ -21,6 +21,7 @@
     
     #board-screen
     {
+        position: absolute;
         border: 0px;
         z-index: 999999;
     }
@@ -35,40 +36,36 @@
         z-index: -1;
     }
     
-    #board-surface
+    img.piece
     {
-        width: 100%;
-        height: 100%;
-    }
-    
-    #marker
-    {
+        border: 0px solid black;
         position: absolute;
-        background-color: #00F;
-        z-index: -1;
+        z-index: 1;
     }
 </style>
 </head>
 <body id="drag-drop-irregular-shapes">
     <div id="board">
-        <img id="board-screen" alt="board" src="pics/transparent.gif" usemap="#board-def" />
+        <img id="board-screen" alt="board" src="./transparent.gif" usemap="#board-def" />
         <map id="board-def" name="board-def">
-            <area shape="poly" alt="triangle" coords="40,210,80,190,70,230"/>
-            <area shape="poly" alt="triangle" coords="100,40,90,100,180,100,170,10"/>
-            <area shape="poly" alt="triangle" coords="100,40,90,100,180,100,170,10,150,50"/>
+            <area shape="poly" coords="50,0,100,50,50,100,0,50" adj-pieces="{'2': [100, 100], '3': [0, 100]}" img-piece="diamond.png"/>
+            <area shape="poly" coords="50,100,100,150,50,200,0,150" adj-pieces="{'1': [-100, -100], '3': [-100, 0]}" img-piece="diamond.png"/>
+            <area shape="poly" coords="50,200,100,250,50,300,0,250" adj-pieces="{'1': [0, -100], '2': [100, 0]}" img-piece="diamond.png"/>
         </map>
-        <div id="marker"></div>
     </div>
 <script type="text/javascript" charset="utf-8">
 var board = {};
+var puzzle = {};
 
 (function() {
-    var makeShape = function(coords, display) {
+    var makeShape = function(areaElem) {
         var points = [];
+        var listeners = { move: [] };
         var boundBox = (function() {
             var minX = Number.POSITIVE_INFINITY, maxX = Number.NEGATIVE_INFINITY;
             var minY = Number.POSITIVE_INFINITY, maxY = Number.NEGATIVE_INFINITY;
             
+            var coords = $(areaElem).attr("coords");
             var tempPts = coords.split(",");
             if(tempPts.length % 2) throw Error("Odd number of points in coords: " + coords)
             
@@ -88,47 +85,64 @@ var board = {};
         })();
         
         var shape = {};
-        shape.getCoords = function() { return coords; };
-        
         // Returns object of the form {x: int, y: int, width: int, height: int};
         shape.getBoundingBox = function() { return boundBox; };
         
+        shape.getElement = function() { return areaElem; };
+        
+        shape.bringForward = function() {
+            $(areaElem).parent().prepend(areaElem);
+        };
+        
+        shape.onMove = function(listener) {
+            listeners.move.push(listener);
+        };
+        
+         shape.onClick = function(listener) {
+            $(areaElem).click(function(e) {
+                listener.call(shape, e);
+            });
+        };
+        
+        shape.onMouseUp = function(listener) {
+            $(areaElem).mouseup(function(e) {
+                listener.call(shape, e);
+            });
+        }
+        
         // Pos is the x, y coordinates of the upper left hand corner of the bounding box
-        shape.move = function(pos) { 
+        shape.move = function(pos, e) { 
             var diff = { x: pos.x - boundBox.x, y: pos.y - boundBox.y };
             
-            var newCoords = [];
+            var coords = [];
             for(var i = 0; i < points.length; i++) {
                 points[i].x += diff.x; 
                 points[i].y += diff.y;
                 
-                newCoords.push(points[i].x);
-                newCoords.push(points[i].y);
+                coords.push(points[i].x);
+                coords.push(points[i].y);
             }
-            coords = newCoords.join(",")
             
             boundBox.x = pos.x;
             boundBox.y = pos.y;
             
-            display(boundBox);
+            $(areaElem).attr("coords", coords.join(","));
+            
+            for(var i = 0; i < listeners.move.length; i++) {
+                listeners.move[i].call(shape, e);
+            }
         };
                 
         return shape;
     };
     
     board.create = function(boardId) {
+        var shapes = {};
+        
         var mouseIsDown = false; 
         var offset;
         var shapeMoving;
         
-        var displayShape = function(boundBox) {
-            $("#marker")
-                .css({ left: boundBox.x,
-                       top: boundBox.y,
-                       width: boundBox.width,
-                       height: boundBox.height });
-        };
-                
         $(document)
             .mouseup(function() { 
                 mouseIsDown = false; 
@@ -140,44 +154,73 @@ var board = {};
             .mousemove(function(e) {
                 if(!mouseIsDown) return false;
                 
-                var shape = jQuery.data(shapeMoving, "shape");
-                shape.move({ x: e.pageX + offset.x, y: e.pageY + offset.y });
-                
-                $(shapeMoving).attr("coords", shape.getCoords());
+                var shape = shapes[$(shapeMoving).attr("shape-id")];
+                shape.move({ x: e.pageX + offset.x, y: e.pageY + offset.y }, e);
                 
                 return false;
             });
         
         $("#" + boardId + " area")
             .each(function(i) {
-                jQuery.data(this, "shape",
-                    makeShape($(this).attr("coords"), displayShape));
+                var id = $(this).attr("shape-id");
+                if (!id) {
+                    id = i;
+                    $(this).attr("shape-id", id);
+                }
+                
+                shapes[id] = makeShape(this);
             })
-            .mousedown(function(e){ 
-                var boundBox = jQuery.data(this, "shape").getBoundingBox();
+            .mousedown(function(e) { 
+                var boundBox = shapes[$(this).attr("shape-id")].getBoundingBox();
                 
                 offset = { x: boundBox.x - e.pageX, y: boundBox.y - e.pageY };
                 mouseIsDown = true; 
                 shapeMoving = this;
                 
                 return false; 
-            })
-            .mousemove(function(e) {
-                if (mouseIsDown) return true; // Allow event to bubble up
-                
-                var offset = $(this).offset();
-                
-                $("<div>")
-                    .addClass("indicator") 
-                    .css({ left: (e.pageX - offset.left - 2) + "px", 
-                           top: (e.pageY - offset.top - 2) + "px" })
-                    .appendTo("#board");
-                
-                return false
             });
+        
+        return shapes;
     };
     
-    board.create("board-def");
+    puzzle.create = function(shapes) {
+        var threshold = 10;
+        
+        for (var shapeId in shapes) {
+            var adj = eval("(" + $(shapes[shapeId].getElement()).attr("adj-pieces") + ")");
+            
+            for (var adjId in adj) {
+                shapes[shapeId].onMouseUp(function(e) {
+                    var thisBox = this.getBoundingBox();
+                    var thatBox = shapes[adjId].getBoundingBox();
+                    
+                    var vec = { x: thisBox.x - thatBox.x, y: thisBox.y - thatBox.y };
+                    var diff = { x: Math.abs(vec.x - adj[adjId][0]), y: Math.abs(vec.y - adj[adjId][1]) };
+                    
+                    if (diff.x < threshold && diff.y < threshold) {
+                        alert("Right pos!!");
+                    }
+                });
+            }
+            
+            (function() {
+                var img = new Image();
+                img.src = $(shapes[shapeId].getElement()).attr("img-piece");
+                $("#board").prepend(img);
+                $(img)
+                    .addClass("piece")
+                    .css({ left: shapes[shapeId].getBoundingBox().x, top: shapes[shapeId].getBoundingBox().y });;
+                
+                shapes[shapeId].onMove(function(e) {
+                    var box = this.getBoundingBox();
+                    $(img).css({ left: box.x, top: box.y });
+                });
+            })();
+        }
+    };
+    
+    var shapes = board.create("board-def");
+    puzzle.create(shapes);
 })();
 </script>
 </body>
