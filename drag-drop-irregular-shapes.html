@@ -9,37 +9,28 @@
     #board, 
     #board-screen
     {
-        width: 300px;
-        height: 300px;
+        width: 500px;
+        height: 500px;
     }
     
     #board
     {
-        border: 5px solid black;
+        border: 1px solid black;
         position: relative;
+        overflow: hidden;
     }
     
     #board-screen
     {
         position: absolute;
-        border: 0px;
+        border: 0px solid black;
         z-index: 999999;
-    }
-    
-    .indicator
-    {
-        position: absolute;
-        overflow: hidden;
-        background-color: #F00;
-        width: 3px;
-        height: 3px;
-        z-index: -1;
     }
     
     img.piece
     {
-        border: 0px solid black;
         position: absolute;
+        border: 0px solid black;
         z-index: 1;
     }
 </style>
@@ -48,8 +39,41 @@
     <div id="board">
         <img id="board-screen" alt="board" src="./transparent.gif" usemap="#board-def" />
         <map id="board-def" name="board-def">
-            <area shape="poly" coords="50,0,100,50,50,100,0,50" shape-id="1" adj-pieces="{'2': [0, 100]}" img-piece="diamond.png"/>
-            <area shape="poly" coords="50,200,100,250,50,300,0,250" shape-id="2" adj-pieces="{'1': [0, -100]}" img-piece="diamond.png"/>
+            <area shape="poly" 
+                  coords="100,0,100,100,150,150,100,150,100,200,0,100" 
+                  shape-id="r" 
+                  adj-pieces="{'c': [100, 150], 'g': [100, -50]}" 
+                  img-piece="diamond-puzzle-red.png"/>
+            <area shape="poly" 
+                  coords="0,0,50,0,50,50,150,50,150,100,100,150,0,50" 
+                  shape-id="c" 
+                  adj-pieces="{'y': [100, -50], 'g': [0, -200], 'r': [-100, -150]}" 
+                  img-piece="diamond-puzzle-cyan.png"/>
+            <area shape="poly" 
+                  coords="50,0,100,0,100,50,50,50,50,150,100,150,100,250,50,250,50,200,0,150,0,50" 
+                  shape-id="g" 
+                  adj-pieces="{'c': [0, 200], 'y': [100, 150], 'r': [-100, 50], 'o': [50, 50], 'p': [50, -50]}" 
+                  img-piece="diamond-puzzle-green.png"/>
+            <area shape="poly" 
+                  coords="0,0,50,0,50,50,100,0,200,0,50,150,50,100,0,100" 
+                  shape-id="y" 
+                  adj-pieces="{'c': [-100, 50], 'g': [-100, -150], 'o': [-50, -100], 'b': [50, -150]}" 
+                  img-piece="diamond-puzzle-yellow.png"/>
+            <area shape="poly" 
+                  coords="0,0,50,0,50,50,150,50,150,100,100,150,100,100,0,100" 
+                  shape-id="o" 
+                  adj-pieces="{'y': [50, 100], 'g': [-50, -50], 'b': [100, -50], 'p': [0, -100]}" 
+                  img-piece="diamond-puzzle-orange.png"/>
+            <area shape="poly" 
+                  coords="50,0,100,50,100,150,50,150,50,50,0,50" 
+                  shape-id="p"
+                  adj-pieces="{'g': [-50, 50], 'o': [0, 100], 'b': [100, 50]}" 
+                  img-piece="diamond-puzzle-purple.png"/> 
+            <area shape="poly" 
+                  coords="0,0,150,150,50,150,50,100,0,100" 
+                  shape-id="b" 
+                  adj-pieces="{'y': [-50, 150], 'p': [-100, -50], 'o': [-100, 50]}" 
+                  img-piece="diamond-puzzle-blue.png"/>      
         </map>
     </div>
 <script type="text/javascript" charset="utf-8">
@@ -58,20 +82,25 @@ var puzzle = {};
 
 (function() {
     var makeShape = function(areaElem) {
-        var points = [];
-        var listeners = { move: [] };
-        var boundBox = (function() {
+        var _points = [];
+        var _listeners = { move: [], drop: [], lift: [] };
+        
+        var shape = {};
+        shape.isLifted = false;
+        
+        // Returns object of the form {x: int, y: int, width: int, height: int};
+        shape.boundingBox = (function() {
             var minX = Number.POSITIVE_INFINITY, maxX = Number.NEGATIVE_INFINITY;
             var minY = Number.POSITIVE_INFINITY, maxY = Number.NEGATIVE_INFINITY;
             
             var coords = $(areaElem).attr("coords");
             var tempPts = coords.split(",");
-            if(tempPts.length % 2) throw Error("Odd number of points in coords: " + coords)
+            if(tempPts.length % 2) throw Error("Odd number of points in coords: " + coords);
             
             for(var i = 0; i < tempPts.length; i += 2) {
                 var x = Number(tempPts[i]), y = Number(tempPts[i + 1]);
                 
-                points.push({ "x": x, "y": y });
+                _points.push({ "x": x, "y": y });
                 
                 if (minX > x) minX = x;
                 if (minY > y) minY = y;
@@ -83,131 +112,184 @@ var puzzle = {};
                      width: maxX - minX, height: maxY - minY };
         })();
         
-        var shape = {};
-        // Returns object of the form {x: int, y: int, width: int, height: int};
-        shape.getBoundingBox = function() { return boundBox; };
-        
-        shape.getElement = function() { return areaElem; };
+        shape.areaElement = areaElem;
         
         shape.bringForward = function() {
             $(areaElem).parent().prepend(areaElem);
         };
         
         shape.onMove = function(listener) {
-            listeners.move.push(listener);
+            _listeners.move.push(listener);
+            
+            return shape;
+        };
+                
+        shape.onDrop = function(listener) {
+            _listeners.drop.push(listener);
+            
+            return shape;
         };
         
-         shape.onClick = function(listener) {
-            $(areaElem).click(function(e) {
-                listener.call(shape, e);
-            });
+        shape.onLift = function(listener) {
+            _listeners.lift.push(listener);
+            
+            return shape;
         };
-        
-        shape.onMouseUp = function(listener) {
-            $(areaElem).mouseup(function(e) {
-                listener.call(shape, e);
-            });
-        }
         
         // Pos is the x, y coordinates of the upper left hand corner of the bounding box
         shape.move = function(pos, e) { 
-            var diff = { x: pos.x - boundBox.x, y: pos.y - boundBox.y };
-            
-            var coords = [];
-            for(var i = 0; i < points.length; i++) {
-                points[i].x += diff.x; 
-                points[i].y += diff.y;
-                
-                coords.push(points[i].x);
-                coords.push(points[i].y);
+            var diff = { x: pos.x - shape.boundingBox.x, y: pos.y - shape.boundingBox.y };
+            for(var i = 0; i < _points.length; i++) {
+                _points[i].x += diff.x; 
+                _points[i].y += diff.y;
             }
             
-            boundBox.x = pos.x;
-            boundBox.y = pos.y;
-            
-            $(areaElem).attr("coords", coords.join(","));
-            
-            for(var i = 0; i < listeners.move.length; i++) {
-                listeners.move[i].call(shape, e);
+            shape.boundingBox.x = pos.x;
+            shape.boundingBox.y = pos.y;
+                        
+            for(i = 0; i < _listeners.move.length; i++) {
+                _listeners.move[i].call(shape, e);
             }
         };
-                
+        
+        shape.drop = function(e) {
+            shape.isLifted = false;
+            
+            var coords = [];
+            for(var i = 0; i < _points.length; i++) {
+                coords.push(_points[i].x);
+                coords.push(_points[i].y);
+            }
+            $(areaElem).attr("coords", coords.join(","));
+                        
+            for(i = 0; i < _listeners.drop.length; i++) {
+                _listeners.drop[i].call(shape, e);
+            }            
+        };
+        
+        shape.lift = function(e) {
+            shape.isLifted = true;
+            
+            for(i = 0; i < _listeners.lift.length; i++) {
+                _listeners.lift[i].call(shape, e);
+            }            
+        };
+        
         return shape;
     };
     
     board.create = function(boardId) {
         var shapes = {};
         
-        var mouseIsDown = false; 
-        var offset;
-        var shapeMoving;
+        var _mouseIsDown = false; 
+        var _offset = {};
+        var _movingShapeId = "";
         
         $(document)
-            .mouseup(function() { 
-                mouseIsDown = false; 
-                offset = {};
-                shapeMoving = {};
+            .mouseup(function(e) {
+                if(!_mouseIsDown) return true;
+                
+                _mouseIsDown = false; 
+                
+                shapes[_movingShapeId].drop({ x: e.pageX + _offset.x, y: e.pageY + _offset.y }, e);
+                _offset = {};
+                _movingShapeId = "";
                 
                 return false;
             })
             .mousemove(function(e) {
-                if(!mouseIsDown) return false;
+                if(!_mouseIsDown) return true;
                 
-                var shape = shapes[$(shapeMoving).attr("shape-id")];
-                shape.move({ x: e.pageX + offset.x, y: e.pageY + offset.y }, e);
+                shapes[_movingShapeId].move({ x: e.pageX + _offset.x, y: e.pageY + _offset.y }, e);
                 
                 return false;
             });
         
-        $("#" + boardId + " area")
-            .each(function(i) {
-                var id = $(this).attr("shape-id");
-                shapes[id] = makeShape(this);
-            })
-            .mousedown(function(e) { 
-                var boundBox = shapes[$(this).attr("shape-id")].getBoundingBox();
-                
-                offset = { x: boundBox.x - e.pageX, y: boundBox.y - e.pageY };
-                mouseIsDown = true; 
-                shapeMoving = this;
-                
-                return false; 
-            });
+        $("#" + boardId)
+            .siblings("img")
+                .mousedown(function() { return false; }) // Prevent dragging cover image
+            .end()
+            .children("area")
+                .each(function(i) {
+                    var id = $(this).attr("shape-id");
+                    shapes[id] = makeShape(this);
+                })
+                .mousedown(function(e) { 
+                    _movingShapeId = $(this).attr("shape-id");
+                    
+                    var shape = shapes[_movingShapeId];
+                    var box = shape.boundingBox;
+                    
+                    _offset = { x: box.x - e.pageX, y: box.y - e.pageY };
+                    _mouseIsDown = true;
+                    
+                    shape.lift({ x: e.pageX + _offset.x, y: e.pageY + _offset.y }, e);
+                    
+                    return false; 
+                });
         
         return shapes;
     };
     
     puzzle.create = function(shapes) {
-        var threshold = 10;
+        var _threshold = 10;
         
         var addDisplayer = function(shape) {
+            var box = shape.boundingBox;
             var img = new Image();
-            img.src = $(shape.getElement()).attr("img-piece");
-            $("#board").prepend(img);
+            img.src = $(shape.areaElement).attr("img-piece");
             $(img)
+                .prependTo("#board")
                 .addClass("piece")
-                .css({ left: shape.getBoundingBox().x, top: shape.getBoundingBox().y });
+                .css({ left: box.x, top: box.y });
             
             shape.onMove(function(e) {
-                var box = this.getBoundingBox();
                 $(img).css({ left: box.x, top: box.y });
             });
         };
         
+        var connectShapes = function(shape1, shape2, vec) {
+            var box1 = shape1.boundingBox;
+            var box2 = shape2.boundingBox;
+            
+            shape1
+                .onLift(function(e) { if(!shape2.isLifted) shape2.lift(e); })
+                .onMove(function(e) {
+                    var pos = { x: box1.x + vec.x, y: box1.y + vec.y };
+                    
+                    if(box2.x === pos.x && box2.y === pos.y) return;
+                    
+                    shape2.move(pos);
+                })
+                .onDrop(function(e) { if(shape2.isLifted) shape2.drop(e); });
+            
+            var negVec = { x: -vec.x, y: -vec.y };
+            shape2
+                .onLift(function(e) { if(!shape1.isLifted) shape1.lift(e); })
+                .onMove(function(e) {
+                    var pos = { x: box2.x + negVec.x, y: box2.y + negVec.y };
+                    
+                    if(box1.x === pos.x && box1.y === pos.y) return;
+                    
+                    shape1.move(pos);
+                })
+                .onDrop(function(e) { if(shape1.isLifted) shape1.drop(e); });
+        };
+        
         var addAdjacencyCheck = function(shape, adjList) {
-            shape.onMouseUp(function(e) {
-                var thisBox = this.getBoundingBox();
-                 
+            var thisBox = shape.boundingBox;
+            
+            shape.onDrop(function(e) {
                 for (var id in adjList) {
                     if (!adjList[id]) continue;
                     
-                    var thatBox = shapes[id].getBoundingBox();
+                    var thatBox = shapes[id]. boundingBox;
                     
                     var truVec = { x: adjList[id][0], y: adjList[id][1] };
                     var vec = { x: thatBox.x - thisBox.x, y: thatBox.y - thisBox.y };
                     var diff = { x: Math.abs(vec.x - truVec.x), y: Math.abs(vec.y - truVec.y) };
                     
-                    if (diff.x < threshold && diff.y < threshold) {
+                    if (diff.x < _threshold && diff.y < _threshold) {
                         var setPos = { x: thatBox.x - truVec.x, y: thatBox.y - truVec.y };
                         
                         adjList[id] = null;
@@ -219,31 +301,8 @@ var puzzle = {};
             });
         };
         
-        var connectShapes = function(shape1, shape2, vec) {
-            shape1.onMove(function(e) {
-                var box1 = this.getBoundingBox();
-                var box2 = shape2.getBoundingBox();
-                var pos = { x: box1.x + vec.x, y: box1.y + vec.y };
-                
-                if(box2.x === pos.x && box2.y === pos.y) return;
-                
-                shape2.move(pos);
-            });
-            
-            var negVec = { x: -vec.x, y: -vec.y };
-            shape2.onMove(function(e) {
-                var box2 = this.getBoundingBox();
-                var box1 = shape1.getBoundingBox();
-                var pos = { x: box2.x + negVec.x, y: box2.y + negVec.y };
-                
-                if(box1.x === pos.x && box1.y === pos.y) return;
-                
-                shape1.move(pos);
-            });
-        };
-        
         for (var shapeId in shapes) {
-            var adj = eval("(" + $(shapes[shapeId].getElement()).attr("adj-pieces") + ")");
+            var adj = eval("(" + $(shapes[shapeId].areaElement).attr("adj-pieces") + ")");
             
             addAdjacencyCheck(shapes[shapeId], adj);
             
