@@ -4,7 +4,7 @@
 <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
     <title>drag-drop-irregular-shapes</title>
-    <script src="../jquery-1.2.6.js" type="text/javascript" charset="utf-8"></script>
+    <script src="jquery-1.3.2.js" type="text/javascript" charset="utf-8"></script>
 <style type="text/css" media="screen">
     #board, 
     #board-screen
@@ -36,6 +36,7 @@
 </style>
 </head>
 <body id="drag-drop-irregular-shapes">
+    Drag and drop the pieces to make a diamond 
     <div id="board">
         <img id="board-screen" alt="board" src="./transparent.gif" usemap="#board-def" />
         <map id="board-def" name="board-def">
@@ -161,7 +162,7 @@ var puzzle = {};
                 coords.push(_points[i].y);
             }
             $(areaElem).attr("coords", coords.join(","));
-                        
+            
             for(i = 0; i < _listeners.drop.length; i++) {
                 _listeners.drop[i].call(shape, e);
             }            
@@ -214,7 +215,9 @@ var puzzle = {};
                     var id = $(this).attr("shape-id");
                     shapes[id] = makeShape(this);
                 })
-                .mousedown(function(e) { 
+                .mousedown(function(e) {
+                    if(_mouseIsDown) return false;
+                    
                     _movingShapeId = $(this).attr("shape-id");
                     
                     var shape = shapes[_movingShapeId];
@@ -238,13 +241,14 @@ var puzzle = {};
             var box = shape.boundingBox;
             var img = new Image();
             img.src = $(shape.areaElement).attr("img-piece");
-            $(img)
-                .prependTo("#board")
+            
+            var $img = $(img);
+            $img.prependTo("#board")
                 .addClass("piece")
                 .css({ left: box.x, top: box.y });
             
             shape.onMove(function(e) {
-                $(img).css({ left: box.x, top: box.y });
+                $img.css({ left: box.x, top: box.y });
             });
         };
         
@@ -283,7 +287,7 @@ var puzzle = {};
                 for (var id in adjList) {
                     if (!adjList[id]) continue;
                     
-                    var thatBox = shapes[id]. boundingBox;
+                    var thatBox = shapes[id].boundingBox;
                     
                     var truVec = { x: adjList[id][0], y: adjList[id][1] };
                     var vec = { x: thatBox.x - thisBox.x, y: thatBox.y - thisBox.y };
