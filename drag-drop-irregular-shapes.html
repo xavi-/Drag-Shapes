@@ -91,22 +91,22 @@
                   img-piece="pics/diamond-puzzle-blue.png"/>
         </map>
     </div>
-    <div id="out"></div>
 <script type="text/javascript" charset="utf-8">
 var xav = {};
 
 (function() {
-    xav.util = {};
-    xav.util.rotateVector = (function() {
+    var util = {};
+    util.rotateVector = (function() {
         var nullVec = { x: 0, y: 0 };
+        var cache = { 0: { cos: 1, sin: 0 } };
         
         return function(vec, angle, offset) {
-            var cosAng = Math.cos(angle);
-            var sinAng = Math.sin(angle);
+            var temp = cache[angle] || { cos: Math.cos(angle), sin: Math.sin(angle) };
+            if(!cache[angle]) { cache[angle] = temp; }
             offset = offset || nullVec;
             
-            return { x: vec.x * cosAng - vec.y * sinAng + offset.x,
-                     y: vec.y * cosAng + vec.x * sinAng + offset.y };
+            return { x: vec.x * temp.cos - vec.y * temp.sin + offset.x,
+                     y: vec.y * temp.cos + vec.x * temp.sin + offset.y };
         };
     })();
 
@@ -148,7 +148,7 @@ var xav = {};
                                  y: shape.boundingGem.height / 2 };
             
             return function() {
-                return xav.util.rotateVector(centerPntVec, shape.boundingGem.angle, shape.boundingGem);
+                return util.rotateVector(centerPntVec, shape.boundingGem.angle, shape.boundingGem);
             };
         })();
         
@@ -234,12 +234,12 @@ var xav = {};
                 
                 var coords = [];
                 
-                var cornerPnt = xav.util.rotateVector({x: -centerPntVec.x, y: -centerPntVec.y }, angle, centerPoint);
+                var cornerPnt = util.rotateVector({x: -centerPntVec.x, y: -centerPntVec.y }, angle, centerPoint);
                 shape.boundingGem.x = cornerPnt.x;
                 shape.boundingGem.y = cornerPnt.y;
                 shape.boundingGem.angle = angle;
                 for(i = 0; i < centerVecs.length; i++) {
-                    _points[i] = xav.util.rotateVector(centerVecs[i], angle, centerPoint);
+                    _points[i] = util.rotateVector(centerVecs[i], angle, centerPoint);
                     
                     coords.push(_points[i].x);
                     coords.push(_points[i].y);
@@ -312,7 +312,7 @@ var xav = {};
     };
     
     xav.rotatable = {};
-	xav.rotatable.create = function(img) {
+	xav.rotatable.create = function(img, initAng) {
         var _useCanvas = !img.filters;
         var _hasLoaded = false;
 
@@ -355,7 +355,7 @@ var xav = {};
                 var c = rot.element.getContext("2d");
 
                 return function(rad) {
-                    if (!_hasLoaded) { return;}
+                    if (!_hasLoaded) { initAng = rad; return; }
                     
                     c.clearRect(-diag / 2, -diag / 2, diag, diag);
 
@@ -461,7 +461,7 @@ var xav = {};
                     var thatGem = shapes[id].boundingGem;
                     if(Math.abs(thisGem.angle - thatGem.angle) > _thresholdAngle) { continue; }
                     
-                    var truVec = xav.util.rotateVector({ x: adjList[id][0], y: adjList[id][1] }, thisGem.angle);
+                    var truVec = util.rotateVector({ x: adjList[id][0], y: adjList[id][1] }, thisGem.angle);
                     var curVec = { x: thatGem.x - thisGem.x, y: thatGem.y - thisGem.y };
                     var diff = { x: Math.abs(curVec.x - truVec.x), y: Math.abs(curVec.y - truVec.y) };
                     
