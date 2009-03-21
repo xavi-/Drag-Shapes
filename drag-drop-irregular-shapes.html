@@ -467,7 +467,7 @@ var xav = {};
                     if (diff.x < _threshold && diff.y < _threshold) {
                         var setPos = { x: thatGem.x - truVec.x, y: thatGem.y - truVec.y };
                         
-                        adjList[id] = null;
+                        delete adjList[id];
                         
                         this.move(setPos);
                         connectShapes(this, shapes[id], truVec);
