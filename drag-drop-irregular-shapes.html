@@ -349,7 +349,7 @@ var xav = {};
             return cnv[0];
         })();
 
-		 rot.rotate = (function() {
+		rot.rotate = (function() {
             var diag = Math.round(Math.sqrt(img.width * img.width + img.height * img.height));
             if (_useCanvas) {
                 var c = rot.element.getContext("2d");
@@ -383,11 +383,12 @@ var xav = {};
                 $imgElem.css({ left: Math.round(diag - $imgElem.width()) / 2, 
                                top: Math.round(diag - $imgElem.height()) / 2 });
             };
-		 })();
-		 
-		 _hasLoaded = true; 
-         rot.rotate(0);
-		 return rot;
+		})();
+		
+        $(img).load(function() { _hasLoaded = true; rot.rotate(initAng || 0); });
+        img.src = img.src; // trigger onload handler if image is cached
+        
+		return rot;
 	};
     
     xav.puzzle = {};
