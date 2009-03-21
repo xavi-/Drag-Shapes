@@ -93,23 +93,27 @@
     </div>
     <div id="out"></div>
 <script type="text/javascript" charset="utf-8">
-var rotatable = {};
-var shape = {};
-var board = {};
-var puzzle = {};
+var xav = {};
 
-(function() {    
-    shape.create = function(areaElem) {
-        var _points = [];
-        var _listeners = { move: [], drop: [], lift: [], rotate: [] };
+(function() {
+    xav.util = {};
+    xav.util.rotateVector = (function() {
+        var nullVec = { x: 0, y: 0 };
         
-        var rotateVec = function(vec, angle, offset) {
+        return function(vec, angle, offset) {
             var cosAng = Math.cos(angle);
             var sinAng = Math.sin(angle);
+            offset = offset || nullVec;
             
             return { x: vec.x * cosAng - vec.y * sinAng + offset.x,
                      y: vec.y * cosAng + vec.x * sinAng + offset.y };
         };
+    })();
+
+    xav.shape = {};
+    xav.shape.create = function(areaElem) {
+        var _points = [];
+        var _listeners = { move: [], drop: [], lift: [], rotate: [] };
         
         var shape = {};
         shape.isLifted = false;
@@ -144,7 +148,7 @@ var puzzle = {};
                                  y: shape.boundingGem.height / 2 };
             
             return function() {
-                return rotateVec(centerPntVec, shape.boundingGem.angle, shape.boundingGem);
+                return xav.util.rotateVector(centerPntVec, shape.boundingGem.angle, shape.boundingGem);
             };
         })();
         
@@ -230,12 +234,12 @@ var puzzle = {};
                 
                 var coords = [];
                 
-                var cornerPnt = rotateVec({x: -centerPntVec.x, y: -centerPntVec.y }, angle, centerPoint);
+                var cornerPnt = xav.util.rotateVector({x: -centerPntVec.x, y: -centerPntVec.y }, angle, centerPoint);
                 shape.boundingGem.x = cornerPnt.x;
                 shape.boundingGem.y = cornerPnt.y;
                 shape.boundingGem.angle = angle;
                 for(i = 0; i < centerVecs.length; i++) {
-                    _points[i] = rotateVec(centerVecs[i], angle, centerPoint);
+                    _points[i] = xav.util.rotateVector(centerVecs[i], angle, centerPoint);
                     
                     coords.push(_points[i].x);
                     coords.push(_points[i].y);
@@ -251,7 +255,8 @@ var puzzle = {};
         return shape;
     };
     
-    board.create = function(boardId) {
+    xav.board = {};
+    xav.board.create = function(boardId) {
         var shapes = {};
         
         var _mouseIsDown = false; 
@@ -285,7 +290,7 @@ var puzzle = {};
             .children("area")
                 .each(function(i) {
                     var id = $(this).attr("shape-id");
-                    shapes[id] = shape.create(this);
+                    shapes[id] = xav.shape.create(this);
                 })
                 .mousedown(function(e) {
                     if(_mouseIsDown) { return false; }
@@ -306,7 +311,8 @@ var puzzle = {};
         return shapes;
     };
     
-	rotatable.create = function(img) {
+    xav.rotatable = {};
+	xav.rotatable.create = function(img) {
         var _useCanvas = !img.filters;
         var _hasLoaded = false;
 
@@ -384,7 +390,8 @@ var puzzle = {};
 		 return rot;
 	};
     
-    puzzle.create = function(shapes) {
+    xav.puzzle = {};
+    xav.puzzle.create = function(shapes) {
         var _threshold = 10;
         var _thresholdAngle = .1;
         
@@ -395,7 +402,7 @@ var puzzle = {};
             
             $(img).prependTo("#board");
             
-            var rot = rotatable.create(img);
+            var rot = xav.rotatable.create(img);
             var rotStyle = rot.element.style;
             $(rot.element).addClass("piece");
             
@@ -446,14 +453,6 @@ var puzzle = {};
         var addAdjacencyCheck = function(shape, adjList) {
             var thisGem = shape.boundingGem;
             
-            var rotateVec = function(vec, angle) {
-                var cosAng = Math.cos(angle);
-                var sinAng = Math.sin(angle);
-                
-                return { x: vec.x * cosAng - vec.y * sinAng,
-                         y: vec.y * cosAng + vec.x * sinAng };
-            };
-            
             shape.onDrop(function(e) {
                 for (var id in adjList) {
                     if (!adjList[id]) { continue; }
@@ -461,7 +460,7 @@ var puzzle = {};
                     var thatGem = shapes[id].boundingGem;
                     if(Math.abs(thisGem.angle - thatGem.angle) > _thresholdAngle) { continue; }
                     
-                    var truVec = rotateVec({ x: adjList[id][0], y: adjList[id][1] }, thisGem.angle);
+                    var truVec = xav.util.rotateVector({ x: adjList[id][0], y: adjList[id][1] }, thisGem.angle);
                     var curVec = { x: thatGem.x - thisGem.x, y: thatGem.y - thisGem.y };
                     var diff = { x: Math.abs(curVec.x - truVec.x), y: Math.abs(curVec.y - truVec.y) };
                     
@@ -484,12 +483,12 @@ var puzzle = {};
             
             addDisplayer(shapes[shapeId]);
             
-            shapes[shapeId].rotate(Math.PI / 4);
+            shapes[shapeId].rotate(Math.PI / 5);
         }
     };
     
-    var shapes = board.create("board-def");
-    puzzle.create(shapes);
+    var shapes = xav.board.create("board-def");
+    xav.puzzle.create(shapes);
 })();
 </script>
 </body>
