@@ -434,14 +434,9 @@ var xav = {};
                 rotStyle.top = (centerPoint.y - halfDiag) + "px";
             });
             
-            shape.onRotate(function(e) {
-                rot.rotate(gem.angle);
-            });
+            shape.onRotate(function() { rot.rotate(gem.angle); });
             
-            rot.onReady(function() {
-                shape.move({x: Math.round(Math.random() * (500 - gem.width)), 
-                            y: Math.round(Math.random() * (500 - gem.height))});
-            });
+            return rot;
         };
                 
         var connectShapes = function(shape1, shape2, vec) {
@@ -501,13 +496,18 @@ var xav = {};
         };
         
         for (var shapeId in shapes) {
-            var adj = eval("(" + $(shapes[shapeId].areaElement).attr("adj-pieces") + ")");
+            var shape = shapes[shapeId];
+            var adj = eval("(" + $(shape.areaElement).attr("adj-pieces") + ")");
             
-            addAdjacencyCheck(shapes[shapeId], adj);
+            addAdjacencyCheck(shape, adj);
             
-            addDisplayer(shapes[shapeId]);
-            
-            shapes[shapeId].rotate(Math.PI / 5);
+            addDisplayer(shape).onReady((function(shape) {
+                return function() { 
+                    shape.rotate(Math.PI / 5); 
+                    
+                    shape.move({ x: Math.round(Math.random() * (500 - shape.boundingGem.width)), 
+                                 y: Math.round(Math.random() * (500 - shape.boundingGem.height)) });
+                };})(shape));   
         }
     };
     
