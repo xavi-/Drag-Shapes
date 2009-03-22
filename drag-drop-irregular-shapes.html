@@ -98,15 +98,14 @@ var xav = {};
     var util = {};
     util.rotateVector = (function() {
         var nullVec = { x: 0, y: 0 };
-        var cache = { 0: { cos: 1, sin: 0 } };
         
         return function(vec, angle, offset) {
-            var temp = cache[angle] || { cos: Math.cos(angle), sin: Math.sin(angle) };
-            if(!cache[angle]) { cache[angle] = temp; }
+            var cosAng = Math.cos(angle);
+            var sinAng = Math.sin(angle);
             offset = offset || nullVec;
             
-            return { x: vec.x * temp.cos - vec.y * temp.sin + offset.x,
-                     y: vec.y * temp.cos + vec.x * temp.sin + offset.y };
+            return { x: vec.x * cosAng - vec.y * sinAng + offset.x,
+                     y: vec.y * cosAng + vec.x * sinAng + offset.y };
         };
     })();
 
@@ -189,7 +188,7 @@ var xav = {};
             
             shape.boundingGem.x = pos.x;
             shape.boundingGem.y = pos.y;
-                        
+            
             for(i = 0; i < _listeners.move.length; i++) {
                 _listeners.move[i].call(shape, e);
             }
@@ -315,13 +314,37 @@ var xav = {};
 	xav.rotatable.create = function(img, initAng) {
         var _useCanvas = !img.filters;
         var _hasLoaded = false;
+        var listeners = { ready: [] };
 
         var rot = {};
         
-        rot.element = (function() {
-            var diag = Math.round(Math.sqrt(img.width * img.width + img.height * img.height));
+        rot.element = null;
+        
+        rot.rotate = function(rad) { initAng = rad; };
+        
+        rot.onReady = function(listener) { 
+            if(_hasLoaded) { listener.call(rot); }
             
-            if(!_useCanvas) {
+            listeners.ready.push(listener);
+        };
+        
+        var initRotatable = function() {
+            rot.element = (function() {
+                var diag = Math.round(Math.sqrt(img.width * img.width + img.height * img.height));
+                
+                if(_useCanvas) {
+                    var cnv = $("<canvas>");
+                    cnv.attr("width", diag)
+                       .attr("height", diag);
+                
+                    var c = cnv[0].getContext("2d");
+                    c.translate(diag / 2,  diag / 2);
+
+                    $(img).replaceWith(cnv);
+
+                    return cnv[0];
+                }
+                
                 $(img)
                     .css("position", "absolute")
                     .wrap("<div></div>")
@@ -335,66 +358,59 @@ var xav = {};
                            height: diag });
                 
                 return $(img).parent("div").parent("div")[0];
-            }
+            })();
 
-            var cnv = $("<canvas>").attr("img-src", $(img).attr("src"));
-            cnv.attr("width", diag)
-               .attr("height", diag);
+            rot.rotate = (function() {
+                var diag = Math.round(Math.sqrt(img.width * img.width + img.height * img.height));
+                if (_useCanvas) {
+                    var c = rot.element.getContext("2d");
 
-            var c = cnv[0].getContext("2d");
-            c.translate(diag / 2,  diag / 2);
+                    return function(rad) {
+                        c.clearRect(-diag / 2, -diag / 2, diag, diag);
 
-            $(img).replaceWith(cnv);
+                        c.save();
+                        c.rotate(rad);
+                        c.drawImage(img, -img.width / 2, -img.height / 2);
+                        c.restore();
+                    };
+                }
+                
+                var $imgElem = $(rot.element).children("div").children("img");
 
-            return cnv[0];
-        })();
-
-		rot.rotate = (function() {
-            var diag = Math.round(Math.sqrt(img.width * img.width + img.height * img.height));
-            if (_useCanvas) {
-                var c = rot.element.getContext("2d");
-
+                var filterItem = $imgElem[0].filters.item(0);
                 return function(rad) {
-                    if (!_hasLoaded) { initAng = rad; return; }
-                    
-                    c.clearRect(-diag / 2, -diag / 2, diag, diag);
+                    var costheta = Math.cos(rad);
+                    var sintheta = Math.sin(rad);
 
-                    c.save();
-                    c.rotate(rad);
-                    c.drawImage(img, -img.width / 2, -img.height / 2);
-                    c.restore();
+                    filterItem.M11 = costheta;
+                    filterItem.M12 = -sintheta;
+                    filterItem.M21 = sintheta;
+                    filterItem.M22 = costheta;
+                    
+                    $imgElem.css({ left: Math.round(diag - $imgElem.width()) / 2, 
+                                   top: Math.round(diag - $imgElem.height()) / 2 });
                 };
+            })();
+            
+            rot.rotate(initAng || 0);
+            
+            for(var i = 0; i < listeners.ready.length; i++) {
+                listeners.ready[i].call(rot);
             }
             
-            var $imgElem = $(rot.element).children("div").children("img");
-
-            var filterItem = $imgElem[0].filters.item(0);
-            return function(rad) {
-                if (!_hasLoaded) { return;}
-                    
-                var costheta = Math.cos(rad);
-                var sintheta = Math.sin(rad);
-
-                filterItem.M11 = costheta;
-                filterItem.M12 = -sintheta;
-                filterItem.M21 = sintheta;
-                filterItem.M22 = costheta;
-                
-                $imgElem.css({ left: Math.round(diag - $imgElem.width()) / 2, 
-                               top: Math.round(diag - $imgElem.height()) / 2 });
-            };
-		})();
-		
-        $(img).load(function() { _hasLoaded = true; rot.rotate(initAng || 0); });
-        img.src = img.src; // trigger onload handler if image is cached
+            _hasLoaded = true;
+		};
+        
+        $(img).load(initRotatable);
+        img.src = img.src; // Trigger onload handler if image is cached
         
 		return rot;
 	};
     
     xav.puzzle = {};
     xav.puzzle.create = function(shapes) {
-        var _threshold = 10;
-        var _thresholdAngle = .1;
+        var _thresholdConnect = 0.1;
+        
         
         var addDisplayer = function(shape) {
             var gem = shape.boundingGem;
@@ -404,8 +420,11 @@ var xav = {};
             $(img).prependTo("#board");
             
             var rot = xav.rotatable.create(img);
-            var rotStyle = rot.element.style;
-            $(rot.element).addClass("piece");
+            var rotStyle;
+            rot.onReady(function() {
+                $(rot.element).addClass("piece");
+                rotStyle = rot.element.style;
+            });
             
             var halfDiag = Math.sqrt(gem.width * gem.width + gem.height * gem.height) / 2;
             shape.onMove(function(e) {
@@ -419,11 +438,14 @@ var xav = {};
                 rot.rotate(gem.angle);
             });
             
-            shape.move({x: Math.round(Math.random() * (500 - gem.width)), 
-                        y: Math.round(Math.random() * (500 - gem.height))});
+            rot.onReady(function() {
+                shape.move({x: Math.round(Math.random() * (500 - gem.width)), 
+                            y: Math.round(Math.random() * (500 - gem.height))});
+            });
         };
                 
         var connectShapes = function(shape1, shape2, vec) {
+            var threshold = 0.1;
             var gem1 = shape1.boundingGem;
             var gem2 = shape2.boundingGem;
             
@@ -432,7 +454,7 @@ var xav = {};
                 .onMove(function(e) {
                     var pos = { x: gem1.x + vec.x, y: gem1.y + vec.y };
                     
-                    if(Math.abs(gem2.x - pos.x) <= .5 && Math.abs(gem2.y - pos.y) <= .5) { return; }
+                    if(Math.abs(gem2.x - pos.x) <= threshold && Math.abs(gem2.y - pos.y) <= threshold) { return; }
                     
                     shape2.move(pos);
                 })
@@ -444,7 +466,7 @@ var xav = {};
                 .onMove(function(e) {
                     var pos = { x: gem2.x + negVec.x, y: gem2.y + negVec.y };
                     
-                    if(Math.abs(gem1.x - pos.x) <= .5 && Math.abs(gem1.y - pos.y) <= .5) { return; }
+                    if(Math.abs(gem1.x - pos.x) <= threshold && Math.abs(gem1.y - pos.y) <= threshold) { return; }
                     
                     shape1.move(pos);
                 })
@@ -452,6 +474,8 @@ var xav = {};
         };
         
         var addAdjacencyCheck = function(shape, adjList) {
+            var threshold = 10;
+            var angThreshold = 0.1;
             var thisGem = shape.boundingGem;
             
             shape.onDrop(function(e) {
@@ -459,13 +483,12 @@ var xav = {};
                     if (!adjList[id]) { continue; }
                     
                     var thatGem = shapes[id].boundingGem;
-                    if(Math.abs(thisGem.angle - thatGem.angle) > _thresholdAngle) { continue; }
+                    if(Math.abs(thisGem.angle - thatGem.angle) > angThreshold) { continue; }
                     
                     var truVec = util.rotateVector({ x: adjList[id][0], y: adjList[id][1] }, thisGem.angle);
                     var curVec = { x: thatGem.x - thisGem.x, y: thatGem.y - thisGem.y };
-                    var diff = { x: Math.abs(curVec.x - truVec.x), y: Math.abs(curVec.y - truVec.y) };
                     
-                    if (diff.x < _threshold && diff.y < _threshold) {
+                    if (Math.abs(curVec.x - truVec.x) < threshold && Math.abs(curVec.y - truVec.y) < threshold) {
                         var setPos = { x: thatGem.x - truVec.x, y: thatGem.y - truVec.y };
                         
                         delete adjList[id];
