@@ -24,7 +24,7 @@
     {
         position: absolute;
         border: 0px solid black;
-        z-index: 999999;
+        z-index: 9999999;
     }
     
     .piece
@@ -112,7 +112,7 @@ var xav = {};
     xav.shape = {};
     xav.shape.create = function(areaElem) {
         var _points = [];
-        var _listeners = { move: [], drop: [], lift: [], rotate: [] };
+        var _listeners = { move: [], drop: [], lift: [], rotate: [], bringForward: [] };
         
         var shape = {};
         shape.isLifted = false;
@@ -174,6 +174,12 @@ var xav = {};
             
             return shape;
         };
+        
+        shape.onBringForward = function(listener) {
+            _listeners.bringForward.push(listener);
+            
+            return shape;
+        }
         
         // Pos is the x, y coordinates of the upper left hand corner of the bounding diamond (gem)
         shape.move = function(pos, e) { 
@@ -250,6 +256,14 @@ var xav = {};
                 }
             };
         })();
+        
+        shape.bringForward = function() {
+            $(shape.areaElement).parent().prepend(shape.areaElement);
+            
+            for(i = 0; i < _listeners.bringForward.length; i++) {
+                _listeners.bringForward[i].call(shape);
+            }
+        };
         
         return shape;
     };
@@ -410,6 +424,7 @@ var xav = {};
     xav.puzzle = {};
     xav.puzzle.create = function(shapes) {
         var _thresholdConnect = 0.1;
+        var order = 2;
         
         var addDisplayer = function(shape) {
             var gem = shape.boundingGem;
@@ -421,8 +436,16 @@ var xav = {};
             var rot = xav.rotatable.create(img);
             var rotStyle;
             rot.onReady(function() {
-                $(rot.element).addClass("piece");
                 rotStyle = rot.element.style;
+                $(rot.element).addClass("piece");
+            });
+            
+            shape.onBringForward(function() {
+                rotStyle.zIndex = order++;
+            });
+            
+            shape.onLift(function() {
+                shape.bringForward();
             });
             
             var halfDiag = Math.sqrt(gem.width * gem.width + gem.height * gem.height) / 2;
