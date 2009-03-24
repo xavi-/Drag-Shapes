@@ -92,7 +92,7 @@
         </map>
     </div>
 <script type="text/javascript" charset="utf-8">
-var xav = {};
+var x = {};
 
 (function() {
     var util = {};
@@ -109,8 +109,8 @@ var xav = {};
         };
     })();
 
-    xav.shape = {};
-    xav.shape.create = function(areaElem) {
+    x.shape = {};
+    x.shape.create = function(areaElem) {
         var _points = [];
         var _listeners = { move: [], drop: [], lift: [], rotate: [], bringForward: [] };
         
@@ -268,8 +268,8 @@ var xav = {};
         return shape;
     };
     
-    xav.board = {};
-    xav.board.create = function(boardId) {
+    x.board = {};
+    x.board.create = function(boardId) {
         var shapes = {};
         
         var _mouseIsDown = false; 
@@ -303,7 +303,7 @@ var xav = {};
             .children("area")
                 .each(function(i) {
                     var id = $(this).attr("shape-id");
-                    shapes[id] = xav.shape.create(this);
+                    shapes[id] = x.shape.create(this);
                 })
                 .mousedown(function(e) {
                     if(_mouseIsDown) { return false; }
@@ -324,8 +324,8 @@ var xav = {};
         return shapes;
     };
     
-    xav.rotatable = {};
-	xav.rotatable.create = function(img, initAng) {
+    x.rotatable = {};
+	x.rotatable.create = function(img, initAng) {
         var _useCanvas = !img.filters;
         var _hasLoaded = false;
         var listeners = { ready: [] };
@@ -421,8 +421,8 @@ var xav = {};
 		return rot;
 	};
     
-    xav.puzzle = {};
-    xav.puzzle.create = function(shapes) {
+    x.puzzle = {};
+    x.puzzle.create = function(shapes) {
         var _thresholdConnect = 0.1;
         var order = 2;
         
@@ -433,7 +433,7 @@ var xav = {};
             
             $(img).prependTo("#board");
             
-            var rot = xav.rotatable.create(img);
+            var rot = x.rotatable.create(img);
             var rotStyle;
             rot.onReady(function() {
                 rotStyle = rot.element.style;
@@ -533,8 +533,8 @@ var xav = {};
         }
     };
     
-    var shapes = xav.board.create("board-def");
-    xav.puzzle.create(shapes);
+    var shapes = x.board.create("board-def");
+    x.puzzle.create(shapes);
 })();
 </script>
 </body>
