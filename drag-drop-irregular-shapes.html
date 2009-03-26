@@ -272,6 +272,22 @@ var x = {};
         var _offset = {};
         var _movingShapeId = "";
         
+        var shapeMouseDown = function(e) {
+            if(_mouseIsDown) { return false; }
+            
+            _movingShapeId = $(this).attr("shape-id");
+            
+            var shape = shapes[_movingShapeId];
+            var gem = shape.boundingGem;
+            
+            _offset = { x: gem.x - e.pageX, y: gem.y - e.pageY };
+            _mouseIsDown = true;
+            
+            shape.lift({ x: e.pageX + _offset.x, y: e.pageY + _offset.y }, e);
+            
+            return false; 
+        };
+        
         $(document)
             .mouseup(function(e) {
                 if(!_mouseIsDown) { return true; }
@@ -297,24 +313,10 @@ var x = {};
                 .mousedown(function() { return false; }) // Prevent dragging cover image
             .end()
             .children("area")
+                .mousedown(shapeMouseDown)
                 .each(function(i) {
                     var id = $(this).attr("shape-id");
                     shapes[id] = x.shape.create(this);
-                })
-                .mousedown(function(e) {
-                    if(_mouseIsDown) { return false; }
-                    
-                    _movingShapeId = $(this).attr("shape-id");
-                    
-                    var shape = shapes[_movingShapeId];
-                    var gem = shape.boundingGem;
-                    
-                    _offset = { x: gem.x - e.pageX, y: gem.y - e.pageY };
-                    _mouseIsDown = true;
-                    
-                    shape.lift({ x: e.pageX + _offset.x, y: e.pageY + _offset.y }, e);
-                    
-                    return false; 
                 });
         
         var board = {};
