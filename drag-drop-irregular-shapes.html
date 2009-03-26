@@ -420,7 +420,7 @@ var x = {};
     x.puzzle = {};
     x.puzzle.create = function(shapes) {
         var _thresholdConnect = 0.1;
-        var order = 2;
+        var _displayerStyles = [];
         
         var addDisplayer = function(shape) {
             var gem = shape.boundingGem;
@@ -529,6 +529,8 @@ var x = {};
                     
                     shape.move({ x: Math.round(Math.random() * (500 - shape.boundingGem.width)), 
                                  y: Math.round(Math.random() * (500 - shape.boundingGem.height)) });
+                    
+                    _displayerStyles.push(this.element.style);
                 };})(shape));   
         }
     };
