@@ -317,7 +317,13 @@ var x = {};
                     return false; 
                 });
         
-        return shapes;
+        var board = {};
+        
+        board.shapes = shapes;
+        
+        board.boardId = boardId;
+        
+        return board;
     };
     
     x.rotatable = {};
@@ -418,7 +424,8 @@ var x = {};
 	};
     
     x.puzzle = {};
-    x.puzzle.create = function(shapes) {
+    x.puzzle.create = function(board) {
+        var _shapes = board.shapes;
         var _thresholdConnect = 0.1;
         var _displayerStyles = [];
         
@@ -499,7 +506,7 @@ var x = {};
                 for (var id in adjList) {
                     if (!adjList[id]) { continue; }
                     
-                    var thatGem = shapes[id].boundingGem;
+                    var thatGem = _shapes[id].boundingGem;
                     if(Math.abs(thisGem.angle - thatGem.angle) > angThreshold) { continue; }
                     
                     var truVec = { x: adjList[id][0], y: adjList[id][1] };
@@ -513,14 +520,14 @@ var x = {};
                         
                         this.move(setPos);
                         this.rotate(thatGem.angle);
-                        connectShapes(this, shapes[id], truVec);
+                        connectShapes(this, _shapes[id], truVec);
                     }
                 }
             });
         };
         
-        for (var shapeId in shapes) {
-            var shape = shapes[shapeId];
+        for (var shapeId in _shapes) {
+            var shape = _shapes[shapeId];
             var adj = eval("(" + $(shape.areaElement).attr("adj-pieces") + ")");
             
             addAdjacencyCheck(shape, adj);
@@ -537,8 +544,8 @@ var x = {};
         }
     };
     
-    var shapes = x.board.create("board-def");
-    x.puzzle.create(shapes);
+    var board = x.board.create("board-def");
+    x.puzzle.create(board);
 })();
 </script>
 </body>
