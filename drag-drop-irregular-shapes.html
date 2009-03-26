@@ -325,6 +325,26 @@ var x = {};
         
         board.boardId = boardId;
         
+        board.addShape = function(shapeId, coords) {
+            var $area = $("<area>");
+            $area
+                .attr("shape", "poly")
+                .attr("shape-id", shapeId)
+                .attr("coords", coords)
+                .prependTo("#" + boardId)
+                .mousedown(shapeMouseDown);
+            
+            shapes[shapeId] = x.shape.create($area[0]);
+            
+            return shapes[shapeId];
+        };
+        
+        board.removeShape = function(shapeId) { 
+            $(shapes[shapeId]).remove();
+            
+            delete shapes[shapeId];
+        };
+        
         return board;
     };
     
@@ -431,6 +451,52 @@ var x = {};
         var _thresholdConnect = 0.1;
         var _displayerStyles = [];
         
+        var addRotateButton = (function() {
+            var rotShape, rotStyle, curShape;
+            var offsetVec = { x: -10, y: -10 };
+            
+            var displayer = function() {
+                var gem = this.boundingGem;
+                rotStyle.left = gem.x + "px";
+                rotStyle.top = gem.y + "px";
+            };
+            
+            var adjustShape = function() {
+                var gem = this.boundingGem;
+                var centerPnt = curShape.getCenterPoint();
+                var vec = { x: centerPnt.x - gem.x, y: centerPnt.y - gem.y };
+                var angle = -Math.atan2(vec.x, vec.y);
+                
+                curShape.rotate(angle);
+            };
+            
+            var removeDisplayer = function() {
+                if (!curShape) { return; }
+                rotShape.onMove.remove(adjustShape);
+                curShape.onDrop.remove(removeDisplayer);
+            };
+            
+            return function() {
+                if (!board.shapes["rot"]) { 
+                    rotShape = board.addShape("rot", "0,5,5,0,10,5,5,10");
+                    var $img = $("<img>");
+                    $img
+                        .attr("src", "pics/rotator.gif")
+                        .css({ "position": "absolute", 
+                               "z-index": _displayerStyles.length + 1 })
+                        .prependTo("#board");
+                    rotStyle = $img[0].style;
+                    rotShape.onMove.add(displayer);
+                }
+                
+                removeDisplayer();
+                curShape = this;
+                rotShape = board.shapes["rot"];
+                rotShape.move(util.rotateVector(offsetVec, curShape.boundingGem.angle, curShape.boundingGem));
+                rotShape.onMove.add(adjustShape);
+            };
+        })();
+        
         var addDisplayer = function(shape) {
             var gem = shape.boundingGem;
             var img = new Image();
@@ -455,9 +521,8 @@ var x = {};
                 rotStyle.zIndex = _displayerStyles.length;
             });
             
-            shape.onLift.add(function() {
-                shape.bringForward();
-            });
+            shape.onLift.add(shape.bringForward);
+            shape.onLift.add(addRotateButton);
             
             var halfDiag = Math.sqrt(gem.width * gem.width + gem.height * gem.height) / 2;
             shape.onMove.add(function(e) {
@@ -516,12 +581,10 @@ var x = {};
                     var curVec = { x: thatGem.x - thisGem.x, y: thatGem.y - thisGem.y };
                     
                     if (Math.abs(curVec.x - rotVec.x) < threshold && Math.abs(curVec.y - rotVec.y) < threshold) {
-                        var setPos = { x: thatGem.x - rotVec.x, y: thatGem.y - rotVec.y };
-                        
                         delete adjList[id];
                         
-                        this.move(setPos);
                         this.rotate(thatGem.angle);
+                        this.move(util.rotateVector({ x: -truVec.x, y: -truVec.y }, thatGem.angle, thatGem));
                         connectShapes(this, _shapes[id], truVec);
                     }
                 }
