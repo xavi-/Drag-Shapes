@@ -470,7 +470,7 @@ var x = {};
             
             shape1.onLift.add(function(e) { if(!shape2.isLifted) {  shape2.lift(e); } });
             shape1.onMove.add(function(e) {
-                var pos = { x: gem1.x + vec.x, y: gem1.y + vec.y };
+                var pos = util.rotateVector(vec, gem1.angle, gem1);
                 
                 if(Math.abs(gem2.x - pos.x) <= threshold && Math.abs(gem2.y - pos.y) <= threshold) { return; }
                 
@@ -481,7 +481,7 @@ var x = {};
             var negVec = { x: -vec.x, y: -vec.y };
             shape2.onLift.add(function(e) { if(!shape1.isLifted) { shape1.lift(e); } });
             shape2.onMove.add(function(e) {
-                var pos = { x: gem2.x + negVec.x, y: gem2.y + negVec.y };
+                var pos = util.rotateVector(negVec, gem2.angle, gem2);
                 
                 if(Math.abs(gem1.x - pos.x) <= threshold && Math.abs(gem1.y - pos.y) <= threshold) { return; }
                 
@@ -502,15 +502,17 @@ var x = {};
                     var thatGem = shapes[id].boundingGem;
                     if(Math.abs(thisGem.angle - thatGem.angle) > angThreshold) { continue; }
                     
-                    var truVec = util.rotateVector({ x: adjList[id][0], y: adjList[id][1] }, thisGem.angle);
+                    var truVec = { x: adjList[id][0], y: adjList[id][1] };
+                    var rotVec = util.rotateVector(truVec, thisGem.angle);
                     var curVec = { x: thatGem.x - thisGem.x, y: thatGem.y - thisGem.y };
                     
-                    if (Math.abs(curVec.x - truVec.x) < threshold && Math.abs(curVec.y - truVec.y) < threshold) {
-                        var setPos = { x: thatGem.x - truVec.x, y: thatGem.y - truVec.y };
+                    if (Math.abs(curVec.x - rotVec.x) < threshold && Math.abs(curVec.y - rotVec.y) < threshold) {
+                        var setPos = { x: thatGem.x - rotVec.x, y: thatGem.y - rotVec.y };
                         
                         delete adjList[id];
                         
                         this.move(setPos);
+                        this.rotate(thatGem.angle);
                         connectShapes(this, shapes[id], truVec);
                     }
                 }
