@@ -437,7 +437,13 @@ var x = {};
             });
             
             shape.onBringForward.add(function() {
-                rotStyle.zIndex = order++;
+                var orgIndex = rotStyle.zIndex || 1;
+                
+                for(var i = 0; i < _displayerStyles.length; i++) {
+                    if (_displayerStyles[i].zIndex > orgIndex) { _displayerStyles[i].zIndex -= 1; }
+                }
+                
+                rotStyle.zIndex = _displayerStyles.length;
             });
             
             shape.onLift.add(function() {
