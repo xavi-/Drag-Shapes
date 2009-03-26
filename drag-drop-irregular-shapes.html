@@ -475,7 +475,7 @@ var x = {};
                 if(Math.abs(gem2.x - pos.x) <= threshold && Math.abs(gem2.y - pos.y) <= threshold) { return; }
                 
                 shape2.move(pos);
-            })
+            });
             shape1.onDrop.add(function(e) { if(shape2.isLifted) { shape2.drop(e); } });
             
             var negVec = { x: -vec.x, y: -vec.y };
