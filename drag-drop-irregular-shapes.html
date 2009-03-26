@@ -108,6 +108,32 @@ var x = {};
                      y: vec.y * cosAng + vec.x * sinAng + offset.y };
         };
     })();
+    
+    util.customEvent = function(item) {
+        var _listeners = [];
+        
+        var event = {};
+        
+        event.add = function(listener) { _listeners.push(listener); };
+        
+        event.remove = function(listener) { 
+            for(var i = 0; i < _listeners.length; i++) {
+                if(_listeners[i] == listener) {
+                    return _listeners.splice(i, 1);
+                }
+            }
+            
+            return [];
+        };
+        
+        event.trigger = function() {
+            for(var i = 0; i < _listeners.length; i++) {
+                _listeners[i].call(item);
+            }
+        };
+        
+        return event;
+    };
 
     x.shape = {};
     x.shape.create = function(areaElem) {
@@ -151,35 +177,15 @@ var x = {};
             };
         })();
         
-        shape.onMove = function(listener) {
-            _listeners.move.push(listener);
-            
-            return shape;
-        };
+        shape.onMove = util.customEvent(shape);
                 
-        shape.onDrop = function(listener) {
-            _listeners.drop.push(listener);
-            
-            return shape;
-        };
+        shape.onDrop = util.customEvent(shape);
         
-        shape.onLift = function(listener) {
-            _listeners.lift.push(listener);
-            
-            return shape;
-        };
+        shape.onLift = util.customEvent(shape);
         
-        shape.onRotate = function(listener) {
-            _listeners.rotate.push(listener);
-            
-            return shape;
-        };
+        shape.onRotate = util.customEvent(shape);
         
-        shape.onBringForward = function(listener) {
-            _listeners.bringForward.push(listener);
-            
-            return shape;
-        }
+        shape.onBringForward = util.customEvent(shape);
         
         // Pos is the x, y coordinates of the upper left hand corner of the bounding diamond (gem)
         shape.move = function(pos, e) { 
@@ -195,9 +201,7 @@ var x = {};
             shape.boundingGem.x = pos.x;
             shape.boundingGem.y = pos.y;
             
-            for(i = 0; i < _listeners.move.length; i++) {
-                _listeners.move[i].call(shape, e);
-            }
+            shape.onMove.trigger();
             
             if(!shape.isLifted) { shape.drop(e); }
         };
@@ -212,17 +216,13 @@ var x = {};
             }
             $(areaElem).attr("coords", coords.join(","));
             
-            for(i = 0; i < _listeners.drop.length; i++) {
-                _listeners.drop[i].call(shape, e);
-            }            
+            shape.onDrop.trigger();
         };
         
         shape.lift = function(e) {
             shape.isLifted = true;
             
-            for(var i = 0; i < _listeners.lift.length; i++) {
-                _listeners.lift[i].call(shape, e);
-            }
+            shape.onLift.trigger();
         };
         
         shape.rotate = (function() {
@@ -251,18 +251,14 @@ var x = {};
                 }
                 $(areaElem).attr("coords", coords.join(","));
                 
-                for(i = 0; i < _listeners.rotate.length; i++) {
-                    _listeners.rotate[i].call(shape, e);
-                }
+                shape.onRotate.trigger();
             };
         })();
         
         shape.bringForward = function() {
             $(shape.areaElement).parent().prepend(shape.areaElement);
             
-            for(i = 0; i < _listeners.bringForward.length; i++) {
-                _listeners.bringForward[i].call(shape);
-            }
+            shape.onBringForward.trigger();
         };
         
         return shape;
@@ -440,23 +436,23 @@ var x = {};
                 $(rot.element).addClass("piece");
             });
             
-            shape.onBringForward(function() {
+            shape.onBringForward.add(function() {
                 rotStyle.zIndex = order++;
             });
             
-            shape.onLift(function() {
+            shape.onLift.add(function() {
                 shape.bringForward();
             });
             
             var halfDiag = Math.sqrt(gem.width * gem.width + gem.height * gem.height) / 2;
-            shape.onMove(function(e) {
+            shape.onMove.add(function(e) {
                 var centerPoint = shape.getCenterPoint();
                 
                 rotStyle.left = (centerPoint.x - halfDiag) + "px";
                 rotStyle.top = (centerPoint.y - halfDiag) + "px";
             });
             
-            shape.onRotate(function() { rot.rotate(gem.angle); });
+            shape.onRotate.add(function() { rot.rotate(gem.angle); });
             
             return rot;
         };
@@ -466,28 +462,26 @@ var x = {};
             var gem1 = shape1.boundingGem;
             var gem2 = shape2.boundingGem;
             
-            shape1
-                .onLift(function(e) { if(!shape2.isLifted) {  shape2.lift(e); } })
-                .onMove(function(e) {
-                    var pos = { x: gem1.x + vec.x, y: gem1.y + vec.y };
-                    
-                    if(Math.abs(gem2.x - pos.x) <= threshold && Math.abs(gem2.y - pos.y) <= threshold) { return; }
-                    
-                    shape2.move(pos);
-                })
-                .onDrop(function(e) { if(shape2.isLifted) { shape2.drop(e); } });
+            shape1.onLift.add(function(e) { if(!shape2.isLifted) {  shape2.lift(e); } });
+            shape1.onMove.add(function(e) {
+                var pos = { x: gem1.x + vec.x, y: gem1.y + vec.y };
+                
+                if(Math.abs(gem2.x - pos.x) <= threshold && Math.abs(gem2.y - pos.y) <= threshold) { return; }
+                
+                shape2.move(pos);
+            })
+            shape1.onDrop.add(function(e) { if(shape2.isLifted) { shape2.drop(e); } });
             
             var negVec = { x: -vec.x, y: -vec.y };
-            shape2
-                .onLift(function(e) { if(!shape1.isLifted) { shape1.lift(e); } })
-                .onMove(function(e) {
-                    var pos = { x: gem2.x + negVec.x, y: gem2.y + negVec.y };
-                    
-                    if(Math.abs(gem1.x - pos.x) <= threshold && Math.abs(gem1.y - pos.y) <= threshold) { return; }
-                    
-                    shape1.move(pos);
-                })
-                .onDrop(function(e) { if(shape1.isLifted) { shape1.drop(e); } });
+            shape2.onLift.add(function(e) { if(!shape1.isLifted) { shape1.lift(e); } });
+            shape2.onMove.add(function(e) {
+                var pos = { x: gem2.x + negVec.x, y: gem2.y + negVec.y };
+                
+                if(Math.abs(gem1.x - pos.x) <= threshold && Math.abs(gem1.y - pos.y) <= threshold) { return; }
+                
+                shape1.move(pos);
+            });
+            shape2.onDrop.add(function(e) { if(shape1.isLifted) { shape1.drop(e); } });
         };
         
         var addAdjacencyCheck = function(shape, adjList) {
@@ -495,7 +489,7 @@ var x = {};
             var angThreshold = 0.1;
             var thisGem = shape.boundingGem;
             
-            shape.onDrop(function(e) {
+            shape.onDrop.add(function(e) {
                 for (var id in adjList) {
                     if (!adjList[id]) { continue; }
                     
