@@ -597,11 +597,12 @@ var x = {};
             addAdjacencyCheck(shape, adj);
             
             addDisplayer(shape).onReady((function(shape) {
-                return function() { 
-                    shape.rotate(Math.PI / 5); 
+                return function() {
+                    var angle = 2 * Math.PI * Math.random();
                     
-                    shape.move({ x: Math.round(Math.random() * (500 - shape.boundingGem.width)), 
-                                 y: Math.round(Math.random() * (500 - shape.boundingGem.height)) });
+                    shape.rotate(angle);
+                    shape.move({ x: Math.round(Math.random() * (500 - 250) + 125), 
+                                 y: Math.round(Math.random() * (500 - 250) + 125) });
                     
                     _displayerStyles.push(this.element.style);
                 };})(shape));   
