@@ -367,13 +367,13 @@ var x = {};
         };
         
         var initRotatable = function() {
+            var diag = Math.sqrt(img.width * img.width + img.height * img.height);
+            
             rot.element = (function() {
-                var diag = Math.round(Math.sqrt(img.width * img.width + img.height * img.height));
-                
                 if(_useCanvas) {
                     var cnv = $("<canvas>");
-                    cnv.attr("width", diag)
-                       .attr("height", diag);
+                    cnv.attr("width", Math.round(diag))
+                       .attr("height", Math.round(diag));
                 
                     var c = cnv[0].getContext("2d");
                     c.translate(diag / 2,  diag / 2);
@@ -392,14 +392,13 @@ var x = {};
                            height: "100%" })
                     .wrap("<div></div>")
                     .parent("div")
-                    .css({ width: diag, 
-                           height: diag });
+                    .css({ width: Math.round(diag),
+                           height: Math.round(diag) });
                 
                 return $(img).parent("div").parent("div")[0];
             })();
 
             rot.rotate = (function() {
-                var diag = Math.round(Math.sqrt(img.width * img.width + img.height * img.height));
                 if (_useCanvas) {
                     var c = rot.element.getContext("2d");
 
@@ -413,9 +412,9 @@ var x = {};
                     };
                 }
                 
-                var $imgElem = $(rot.element).children("div").children("img");
-
-                var filterItem = $imgElem[0].filters.item(0);
+                var $img = $(img);
+                var imgStyle = img.style;
+                var filterItem = img.filters.item(0);
                 return function(rad) {
                     var costheta = Math.cos(rad);
                     var sintheta = Math.sin(rad);
@@ -425,8 +424,8 @@ var x = {};
                     filterItem.M21 = sintheta;
                     filterItem.M22 = costheta;
                     
-                    $imgElem.css({ left: Math.round(diag - $imgElem.width()) / 2, 
-                                   top: Math.round(diag - $imgElem.height()) / 2 });
+                    imgStyle.left = (diag - $img.width()) / 2;
+                    imgStyle.top = (diag - $img.height()) / 2;
                 };
             })();
             
