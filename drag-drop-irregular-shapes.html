@@ -492,6 +492,7 @@ var x = {};
                 curShape = this;
                 rotShape = board.shapes["rot"];
                 rotShape.move(util.rotateVector(offsetVec, curShape.boundingGem.angle, curShape.boundingGem));
+                rotShape.bringForward();
                 rotShape.onMove.add(adjustShape);
             };
         })();
