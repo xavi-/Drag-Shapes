@@ -549,6 +549,14 @@ var x = {};
                 
                 shape2.move(pos);
             });
+            shape1.onRotate.add(function(e) {
+                if(Math.abs(gem1.angle - gem2.angle) <= 0.02) { return; }
+                
+                var pos = util.rotateVector(vec, gem1.angle, gem1);
+                
+                shape2.rotate(gem1.angle);
+                shape2.move(pos);
+            });
             shape1.onDrop.add(function(e) { if(shape2.isLifted) { shape2.drop(e); } });
             
             var negVec = { x: -vec.x, y: -vec.y };
@@ -558,6 +566,14 @@ var x = {};
                 
                 if(Math.abs(gem1.x - pos.x) <= threshold && Math.abs(gem1.y - pos.y) <= threshold) { return; }
                 
+                shape1.move(pos);
+            });
+            shape2.onRotate.add(function(e) {
+                if(Math.abs(gem1.angle - gem2.angle) <= 0.02) { return; }
+                
+                var pos = util.rotateVector(negVec, gem2.angle, gem2);
+                
+                shape1.rotate(gem2.angle);
                 shape1.move(pos);
             });
             shape2.onDrop.add(function(e) { if(shape1.isLifted) { shape1.drop(e); } });
