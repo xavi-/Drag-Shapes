@@ -4,7 +4,7 @@
 <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
     <title>drag-drop-irregular-shapes</title>
-    <script src="jquery-1.3.2.js" type="text/javascript" charset="utf-8"></script>
+    <script type="text/javascript" charset="utf-8" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
 <style type="text/css" media="screen">
     #board, 
     #board-screen
@@ -24,7 +24,7 @@
     {
         position: absolute;
         border: 0px solid black;
-        z-index: 9999999;
+        z-index: 9999;
     }
     
     .piece
@@ -476,7 +476,7 @@ var x = {};
             
             return function() {
                 if (!board.shapes["rot"]) { 
-                    rotShape = board.addShape("rot", "0,5,5,0,10,5,5,10");
+                    rotShape = board.addShape("rot", "0,6,6,0,12,6,6,12");
                     var $img = $("<img>");
                     $img
                         .attr("src", "pics/rotator.gif")
@@ -550,7 +550,7 @@ var x = {};
                 shape2.move(pos);
             });
             shape1.onRotate.add(function(e) {
-                if(Math.abs(gem1.angle - gem2.angle) <= 0.02) { return; }
+                if(Math.abs(gem1.angle - gem2.angle) <= 0.001) { return; }
                 
                 var pos = util.rotateVector(vec, gem1.angle, gem1);
                 
@@ -569,7 +569,7 @@ var x = {};
                 shape1.move(pos);
             });
             shape2.onRotate.add(function(e) {
-                if(Math.abs(gem1.angle - gem2.angle) <= 0.02) { return; }
+                if(Math.abs(gem1.angle - gem2.angle) <= 0.001) { return; }
                 
                 var pos = util.rotateVector(negVec, gem2.angle, gem2);
                 
