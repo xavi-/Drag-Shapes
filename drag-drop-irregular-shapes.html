@@ -347,35 +347,20 @@ var x = {};
         return board;
     };
     
-    x.rotatable = {};
-	x.rotatable.create = function(img, initAng) {
-        var _useCanvas = !img.filters;
-        var _hasLoaded = false;
-        var listeners = { ready: [] };
-
-        var rot = {};
+    (function() { // Defining Rotatable class attaching it the x object
+        var window = this;
         
-        rot.element = null;
-        
-        rot.rotate = function(rad) { initAng = rad; };
-        
-        rot.onReady = function(listener) { 
-            if(_hasLoaded) { listener.call(rot); }
+        function initRotatable(rot, img, initAng) {
+            var useCanvas = !img.filters,
+                diag = Math.sqrt(img.width * img.width + img.height * img.height);
             
-            listeners.ready.push(listener);
-        };
-        
-        var initRotatable = function() {
-            var diag = Math.sqrt(img.width * img.width + img.height * img.height);
-            
-            rot.element = (function() {
-                if(_useCanvas) {
+            rot.element = (function getElement(img, diag, useCanvas) {
+                if(useCanvas) {
                     var cnv = $("<canvas>");
                     cnv.attr("width", Math.round(diag))
                        .attr("height", Math.round(diag));
-                
-                    var c = cnv[0].getContext("2d");
-                    c.translate(diag / 2,  diag / 2);
+
+                    cnv[0].getContext("2d").translate(diag / 2,  diag / 2);
 
                     $(img).replaceWith(cnv);
 
@@ -395,13 +380,13 @@ var x = {};
                            height: Math.round(diag) });
                 
                 return $(img).parent("div").parent("div")[0];
-            })();
+            })(img, diag, useCanvas);
 
-            rot.rotate = (function() {
-                if (_useCanvas) {
+            rot.rotate = (function(img, diag, useCanvas) {
+                if (useCanvas) {
                     var c = rot.element.getContext("2d");
 
-                    return function(rad) {
+                    return function rotate(rad) {
                         c.clearRect(-diag / 2, -diag / 2, diag, diag);
 
                         c.save();
@@ -411,12 +396,12 @@ var x = {};
                     };
                 }
                 
-                var $img = $(img);
-                var imgStyle = img.style;
-                var filterItem = img.filters.item(0);
-                return function(rad) {
-                    var costheta = Math.cos(rad);
-                    var sintheta = Math.sin(rad);
+                var $img = $(img),
+                    imgStyle = img.style,
+                    filterItem = img.filters.item(0);
+                return function rotate(rad) {
+                    var costheta = Math.cos(rad),
+                        sintheta = Math.sin(rad);
 
                     filterItem.M11 = costheta;
                     filterItem.M12 = -sintheta;
@@ -426,22 +411,38 @@ var x = {};
                     imgStyle.left = (diag - $img.width()) / 2;
                     imgStyle.top = (diag - $img.height()) / 2;
                 };
-            })();
+            })(img, diag, useCanvas);
             
             rot.rotate(initAng || 0);
-            
-            for(var i = 0; i < listeners.ready.length; i++) {
-                listeners.ready[i].call(rot);
-            }
-            
-            _hasLoaded = true;
-		};
+        };
         
-        $(img).load(initRotatable);
-        img.src = img.src; // Trigger onload handler if image is cached
-        
-		return rot;
-	};
+        window.Rotatable = function Rotatable(img, initAng) {
+            var _hasLoaded = false,
+                _listeners = { ready: [] };
+
+            this.element = null;
+            
+            this.onReady = function onReady(listener) { 
+                if(_hasLoaded) { listener.call(rot); }
+                
+                _listeners.ready.push(listener);
+            };
+            
+            this.rotate = function preInitRotate(rad) { initAng = rad; }
+            
+            var rot = this;
+            $(img).load(function() { 
+                initRotatable(rot, img, initAng); 
+            
+                for(var i = 0; i < _listeners.ready.length; i++) {
+                    _listeners.ready[i].call(rot);
+                }
+            
+                _hasLoaded = true;
+            });
+            img.src = img.src; // Trigger onload handler if image is cached
+        };
+    }).call(x);
     
     x.puzzle = {};
     x.puzzle.create = function(board) {
@@ -503,7 +504,7 @@ var x = {};
             
             $(img).prependTo("#board");
             
-            var rot = x.rotatable.create(img);
+            var rot = new x.Rotatable(img);
             var rotStyle;
             rot.onReady(function() {
                 rotStyle = rot.element.style;
