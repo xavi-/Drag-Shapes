@@ -92,9 +92,10 @@
         </map>
     </div>
 <script type="text/javascript" charset="utf-8">
-var x = {};
-
 (function() {
+    var window = this;
+    window.x = {};
+
     var util = {};
     util.rotateVector = (function() {
         var nullVec = { x: 0, y: 0 };
