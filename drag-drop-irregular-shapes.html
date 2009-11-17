@@ -95,7 +95,7 @@
 (function() {
     var window = this;
     window.x = {};
-
+    
     var util = {};
     util.rotateVector = (function() {
         var nullVec = { x: 0, y: 0 };
@@ -349,7 +349,7 @@
     };
     
     (function() { // Defining Rotatable class attaching it the x object
-        var window = this;
+        var context = this;  // by default the context is window, but it's possible to override using the .call method
         
         function initRotatable(rot, img, initAng) {
             var useCanvas = !img.filters,
@@ -417,7 +417,7 @@
             rot.rotate(initAng || 0);
         };
         
-        window.Rotatable = function Rotatable(img, initAng) {
+        context.Rotatable = function Rotatable(img, initAng) {
             var _hasLoaded = false,
                 _listeners = { ready: [] };
 
