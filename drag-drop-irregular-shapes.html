@@ -213,7 +213,15 @@
                 coords.push(_points[i].x);
                 coords.push(_points[i].y);
             }
+            
             $(areaElem).attr("coords", coords.join(","));
+            if($.browser.webkit) {
+                var $clone = $(areaElem).clone(true, true);
+                
+                $(areaElem).after($clone).remove();
+                
+                shape.areaElemeent = areaElem = $clone[0];
+            }
             
             shape.onDrop.trigger();
         };
@@ -248,7 +256,15 @@
                     coords.push(_points[i].x);
                     coords.push(_points[i].y);
                 }
+                
                 $(areaElem).attr("coords", coords.join(","));
+                if($.browser.webkit) {
+                    var $clone = $(areaElem).clone(true, true);
+                
+                    $(areaElem).after($clone).remove();
+                
+                    shape.areaElemeent = areaElem = $clone[0];
+                }
                 
                 shape.onRotate.trigger();
             };
