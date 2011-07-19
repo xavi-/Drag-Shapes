@@ -295,6 +295,12 @@
         var shapeMouseDown = function(e) {
             if(_mouseIsDown) { return false; }
             
+            if(e.originalEvent.touches && e.originalEvent.touches.length) {
+                e = e.originalEvent.touches[0];
+            } else if(e.originalEvent.changedTouches && e.originalEvent.changedTouches.length) {
+                e = e.originalEvent.changedTouches[0];
+            }
+            
             _movingShapeId = $(this).attr("shape-id");
             
             var shape = shapes[_movingShapeId];
@@ -309,10 +315,16 @@
         };
         
         $(document)
-            .mouseup(function(e) {
-                if(!_mouseIsDown) { return true; }
+            .bind("mouseup touchend MozTouchRelease", function(e) {
+                if(!_mouseIsDown) { return false; }
                 
-                _mouseIsDown = false; 
+                if(e.originalEvent.touches && e.originalEvent.touches.length) {
+                    e = e.originalEvent.touches[0];
+                } else if(e.originalEvent.changedTouches && e.originalEvent.changedTouches.length) {
+                    e = e.originalEvent.changedTouches[0];
+                }
+                
+                _mouseIsDown = false;
                 
                 shapes[_movingShapeId].drop({ x: e.pageX + _offset.x, y: e.pageY + _offset.y }, e);
                 _offset = {};
@@ -320,8 +332,14 @@
                 
                 return false;
             })
-            .mousemove(function(e) {
-                if(!_mouseIsDown) { return true; }
+            .bind("mousemove touchmove MozTouchMove", function(e) {
+                if(!_mouseIsDown) { return false; }
+                
+                if(e.originalEvent.touches && e.originalEvent.touches.length) {
+                    e = e.originalEvent.touches[0];
+                } else if(e.originalEvent.changedTouches && e.originalEvent.changedTouches.length) {
+                    e = e.originalEvent.changedTouches[0];
+                }
                 
                 shapes[_movingShapeId].move({ x: e.pageX + _offset.x, y: e.pageY + _offset.y }, e);
                 
@@ -333,7 +351,7 @@
                 .mousedown(function() { return false; }) // Prevent dragging cover image
             .end()
             .children("area")
-                .mousedown(shapeMouseDown)
+                .bind("mousedown touchstart MozTouchDown", shapeMouseDown)
                 .each(function(i) {
                     var id = $(this).attr("shape-id");
                     shapes[id] = x.shape.create(this);
@@ -352,7 +370,7 @@
                 .attr("shape-id", shapeId)
                 .attr("coords", coords)
                 .prependTo("#" + boardId)
-                .mousedown(shapeMouseDown);
+                .bind("mousedown touchstart MozTouchDown", shapeMouseDown);
             
             shapes[shapeId] = x.shape.create($area[0]);
             
